@@ -1,6 +1,6 @@
 # TempMail Pro
 
-![TempMail Pro Screenshot](https://i.imgur.com/example-screenshot.png)
+![TempMail Pro Screenshot](https://i.imgur.com/eoFFMuG.png)
 
 A modern, disposable email service that allows you to create temporary email addresses for privacy and spam protection.
 
