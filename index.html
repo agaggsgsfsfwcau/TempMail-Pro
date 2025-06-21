@@ -101,6 +101,25 @@
     .toggle-checkbox:checked + .toggle-label {
       background-color: #3b82f6;
     }
+    /* Email list images */
+    .sender-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 8px;
+      background-color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .dark .sender-avatar {
+      background-color: #4b5563;
+      color: #d1d5db;
+    }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
@@ -207,11 +226,7 @@
           
           <div id="attachments" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600"></div>
           
-          <div class="mt-6 flex justify-end gap-2">
-            <button id="downloadBtn" class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg flex items-center btn-hover ripple elevation-1">
-              <span class="material-icons mr-2 text-sm">download</span>
-              <span class="text-sm">Download</span>
-            </button>
+          <div class="mt-6 flex justify-end">
             <button id="deleteMessageBtn" class="bg-red-50 hover:bg-red-100 dark:bg-gray-600 dark:hover:bg-gray-500 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg flex items-center btn-hover ripple elevation-1">
               <span class="material-icons mr-2 text-sm">delete</span>
               <span class="text-sm">Delete</span>
@@ -241,7 +256,6 @@
       messageContent: document.getElementById('messageContent'),
       attachments: document.getElementById('attachments'),
       closeMessageBtn: document.getElementById('closeMessageBtn'),
-      downloadBtn: document.getElementById('downloadBtn'),
       deleteMessageBtn: document.getElementById('deleteMessageBtn'),
       darkModeToggle: document.getElementById('darkModeToggle')
     };
@@ -300,9 +314,6 @@
       elements.closeMessageBtn.addEventListener('click', () => {
         elements.messageView.classList.add('hidden');
       });
-      
-      // Download button
-      elements.downloadBtn.addEventListener('click', downloadMessage);
       
       // Delete message button
       elements.deleteMessageBtn.addEventListener('click', deleteCurrentMessage);
@@ -486,13 +497,66 @@
       state.messages.forEach(msg => {
         const messageEl = document.createElement('div');
         messageEl.className = 'grid grid-cols-12 p-3 cursor-pointer email-item hover:bg-gray-50 dark:hover:bg-gray-700';
-        messageEl.innerHTML = `
-          <div class="col-span-4 sm:col-span-5 truncate font-medium text-gray-900 dark:text-gray-100">${msg.from?.name || msg.from?.address || 'Unknown'}</div>
-          <div class="col-span-6 sm:col-span-5 truncate text-gray-700 dark:text-gray-300">${msg.subject || '(No subject)'}</div>
-          <div class="col-span-2 text-right text-sm text-gray-500 dark:text-gray-400">
-            ${formatTime(msg.createdAt)}
-          </div>
-        `;
+        
+        // Create sender cell with avatar
+        const senderCell = document.createElement('div');
+        senderCell.className = 'col-span-4 sm:col-span-5 flex items-center truncate';
+        
+        const avatar = document.createElement('div');
+        avatar.className = 'sender-avatar';
+        
+        // Get initials from sender name or first letter of email
+        let initials = '?';
+        if (msg.from?.name) {
+          const nameParts = msg.from.name.split(' ');
+          initials = nameParts[0].charAt(0).toUpperCase();
+          if (nameParts.length > 1) {
+            initials += nameParts[1].charAt(0).toUpperCase();
+          }
+        } else if (msg.from?.address) {
+          initials = msg.from.address.charAt(0).toUpperCase();
+        }
+        
+        avatar.textContent = initials;
+        senderCell.appendChild(avatar);
+        
+        const senderText = document.createElement('div');
+        senderText.className = 'truncate';
+        
+        if (msg.from?.name) {
+          senderText.innerHTML = `
+            <div class="font-medium text-gray-900 dark:text-gray-100">${msg.from.name}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 truncate">${msg.from.address || 'Unknown'}</div>
+          `;
+        } else {
+          senderText.innerHTML = `
+            <div class="font-medium text-gray-900 dark:text-gray-100">${msg.from?.address || 'Unknown'}</div>
+          `;
+        }
+        
+        senderCell.appendChild(senderText);
+        messageEl.appendChild(senderCell);
+        
+        // Subject cell
+        const subjectCell = document.createElement('div');
+        subjectCell.className = 'col-span-6 sm:col-span-5 truncate text-gray-700 dark:text-gray-300 flex items-center';
+        
+        // Add attachment icon if message has attachments
+        if (msg.hasAttachments) {
+          const attachmentIcon = document.createElement('span');
+          attachmentIcon.className = 'material-icons text-base mr-1 text-gray-400 dark:text-gray-500';
+          attachmentIcon.textContent = 'attach_file';
+          subjectCell.appendChild(attachmentIcon);
+        }
+        
+        subjectCell.appendChild(document.createTextNode(msg.subject || '(No subject)'));
+        messageEl.appendChild(subjectCell);
+        
+        // Time cell
+        const timeCell = document.createElement('div');
+        timeCell.className = 'col-span-2 text-right text-sm text-gray-500 dark:text-gray-400';
+        timeCell.textContent = formatTime(msg.createdAt);
+        messageEl.appendChild(timeCell);
         
         messageEl.addEventListener('click', () => viewMessage(msg));
         elements.emailList.appendChild(messageEl);
@@ -525,6 +589,14 @@
             .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
             .replace(/on\w+="[^"]*"/g, '');
           elements.messageContent.innerHTML = cleanHtml;
+          
+          // Process images in the message
+          const images = elements.messageContent.querySelectorAll('img');
+          images.forEach(img => {
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.classList.add('my-2');
+          });
         } else if (state.currentMessage.text) {
           elements.messageContent.innerHTML = `<pre class="whitespace-pre-wrap font-sans">${state.currentMessage.text}</pre>`;
         } else {
@@ -580,31 +652,6 @@
       } catch (error) {
         console.error("Error deleting message:", error);
         updateEmailStatus('Delete failed', 'text-red-500 dark:text-red-400');
-        setTimeout(() => elements.emailStatus.classList.add('hidden'), 2000);
-      }
-    }
-
-    // Download the current message as text
-    function downloadMessage() {
-      if (!state.currentMessage) return;
-      
-      try {
-        const subject = state.currentMessage.subject || 'message';
-        const filename = `${subject.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
-        const content = `From: ${state.currentMessage.from?.address || 'Unknown'}\nTo: ${state.currentEmail}\nSubject: ${subject}\nTime: ${formatTime(state.currentMessage.createdAt, true)}\n\n${state.currentMessage.text || "(No content)"}`;
-        
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error("Error downloading message:", error);
-        updateEmailStatus('Download failed', 'text-red-500 dark:text-red-400');
         setTimeout(() => elements.emailStatus.classList.add('hidden'), 2000);
       }
     }
